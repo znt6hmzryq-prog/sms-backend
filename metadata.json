@@ -1,0 +1,7 @@
+{
+  "name": "AI-SOS: WhatsApp-First School OS",
+  "description": "A technical blueprint simulator for an AI-driven School Operating System with Real-Time Gemini Live Audio capabilities for staff.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
