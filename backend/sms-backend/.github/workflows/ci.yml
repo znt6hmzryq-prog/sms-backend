@@ -36,9 +36,24 @@ jobs:
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
+        working-directory: backend/sms-backend
 
-      - name: Copy .env
-        run: php -r "file_exists('backend/sms-backend/.env') || copy('backend/sms-backend/.env.example', 'backend/sms-backend/.env');"
+      - name: Ensure .env exists (create minimal .env if missing)
+        run: |
+          DIR=backend/sms-backend
+          if [ -f "$DIR/.env" ]; then
+            echo ".env already exists in $DIR"
+          elif [ -f "$DIR/.env.example" ]; then
+            cp "$DIR/.env.example" "$DIR/.env"
+          else
+            cat > "$DIR/.env" <<'EOF'
+APP_ENV=testing
+APP_KEY=
+APP_DEBUG=false
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+EOF
+          fi
 
       - name: Prepare environment and sqlite DB
         env:
@@ -46,11 +61,14 @@ jobs:
           DB_CONNECTION: sqlite
           DB_DATABASE: database/database.sqlite
         run: |
-          if [ -f .env.example ]; then cp .env.example .env; fi
-          php -r "file_exists('database') || mkdir('database', 0777, true);"
-          touch database/database.sqlite
-          php artisan key:generate --ansi --force
-          php artisan migrate --force
+          DIR=backend/sms-backend
+          if [ -f "$DIR/.env.example" ] && [ ! -f "$DIR/.env" ]; then
+            cp "$DIR/.env.example" "$DIR/.env"
+          fi
+          php -r "file_exists('$DIR/database') || mkdir('$DIR/database', 0777, true);"
+          touch $DIR/database/database.sqlite
+          (cd $DIR && php artisan key:generate --ansi --force)
+          (cd $DIR && php artisan migrate --force)
 
       - name: Run test suite
         run: php artisan test
