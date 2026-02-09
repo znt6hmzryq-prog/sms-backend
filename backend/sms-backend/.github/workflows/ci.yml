@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
 
+      - name: Copy .env
+        run: php -r "file_exists('backend/sms-backend/.env') || copy('backend/sms-backend/.env.example', 'backend/sms-backend/.env');"
+
       - name: Prepare environment and sqlite DB
         env:
           APP_ENV: testing
