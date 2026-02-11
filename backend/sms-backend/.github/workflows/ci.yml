@@ -8,67 +8,42 @@ on:
 
 jobs:
   test:
-    name: Test on PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
-        php: [8.1, 8.2, 8.3]
+        php: [8.2, 8.3]
+
+    defaults:
+      run:
+        working-directory: backend/sms-backend
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v4
         with:
           php-version: ${{ matrix.php }}
           extensions: mbstring, bcmath, pdo, pdo_sqlite
-          ini-values: post_max_size=256M, memory_limit=2G
           tools: composer:2
 
-      - name: Cache composer
-        uses: actions/cache@v4
-        with:
-          path: ~/.composer/cache
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
-        working-directory: backend/sms-backend
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Ensure .env exists (create minimal .env if missing)
+      - name: Setup env
         run: |
-          DIR=backend/sms-backend
-          if [ -f "$DIR/.env" ]; then
-            echo ".env already exists in $DIR"
-          elif [ -f "$DIR/.env.example" ]; then
-            cp "$DIR/.env.example" "$DIR/.env"
-          else
-            cat > "$DIR/.env" <<'EOF'
-APP_ENV=testing
-APP_KEY=
-APP_DEBUG=false
-DB_CONNECTION=sqlite
-DB_DATABASE=database/database.sqlite
-EOF
+          if [ -f ".env.example" ]; then
+            cp .env.example .env
           fi
+          php -r "file_exists('database') || mkdir('database');"
+          touch database/database.sqlite
 
-      - name: Prepare environment and sqlite DB
-        env:
-          APP_ENV: testing
-          DB_CONNECTION: sqlite
-          DB_DATABASE: database/database.sqlite
+      - name: Generate key + migrate
         run: |
-          DIR=backend/sms-backend
-          if [ -f "$DIR/.env.example" ] && [ ! -f "$DIR/.env" ]; then
-            cp "$DIR/.env.example" "$DIR/.env"
-          fi
-          php -r "file_exists('$DIR/database') || mkdir('$DIR/database', 0777, true);"
-          touch $DIR/database/database.sqlite
-          (cd $DIR && php artisan key:generate --ansi --force)
-          (cd $DIR && php artisan migrate --force)
+          php artisan key:generate --force
+          php artisan migrate --force
 
-      - name: Run test suite
+      - name: Run tests
         run: php artisan test
