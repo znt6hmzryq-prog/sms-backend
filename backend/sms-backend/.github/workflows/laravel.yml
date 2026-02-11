@@ -38,9 +38,14 @@ jobs:
         uses: shivammathur/setup-php@v4
         with:
           php-version: ${{ matrix.php }}
-          extensions: mbstring, bcmath, pdo, pdo_sqlite
-          ini-values: post_max_size=256M, memory_limit=2G
-          tools: composer:2
+          extensions:
+            - mbstring
+            - bcmath
+            - pdo
+            - pdo_sqlite
+          ini-values: "post_max_size=256M, memory_limit=2G"
+          tools:
+            composer: 2
 
       - name: Cache composer
         uses: actions/cache@v4
