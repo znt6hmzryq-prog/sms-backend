@@ -10,7 +10,6 @@ jobs:
   laravel-tests:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         php: [8.2, 8.3]
 
@@ -29,7 +28,6 @@ jobs:
       - name: Deinit/remove broken submodules (safe)
         run: |
           git submodule deinit --all || true
-          [ -f .gitmodules ] && sed -n 's/^/FOUND .gitmodules: /;p' .gitmodules || true
           rm -f .gitmodules || true
           git rm --cached Elham-Mukhtari || true
           rm -rf Elham-Mukhtari || true
@@ -46,22 +44,6 @@ jobs:
           ini-values: "post_max_size=256M, memory_limit=2G"
           tools:
             composer: 2
-
-      - name: Cache composer
-        uses: actions/cache@v4
-        with:
-          path: ~/.composer/cache
-          key: ${{ runner.os }}-composer-${{ hashFiles('backend/sms-backend/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-
-      - name: Diagnostics (project dir)
-        run: |
-          echo "--- RUN CONTEXT ---"
-          echo "PWD: $(pwd)"
-          echo "List project dir:"; ls -la || true
-          echo "Composer version:"; composer --version || true
-          if [ -f composer.json ]; then head -n 200 composer.json || true; else echo "composer.json missing"; fi
-          composer diagnose || true
 
       - name: Ensure project .env exists (safe)
         run: |
