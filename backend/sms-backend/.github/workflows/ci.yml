@@ -47,6 +47,20 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
+      - name: Diagnostics (verify workspace and composer)
+        run: |
+          echo "--- RUN CONTEXT ---"
+          echo "PWD: $(pwd)"
+          echo "List repo root:"
+          ls -la || true
+          echo "List project dir:"
+          ls -la backend/sms-backend || true
+          echo "Composer location and version (if available):"
+          which composer || true
+          composer --version || true
+          echo "Show composer.json (first 200 lines) if present:" 
+          if [ -f backend/sms-backend/composer.json ]; then head -n 200 backend/sms-backend/composer.json || true; else echo "composer.json not found in backend/sms-backend"; fi
+
       - name: Install dependencies (project dir)
         working-directory: backend/sms-backend
         run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
