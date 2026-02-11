@@ -56,9 +56,19 @@ jobs:
           echo "Show composer.json (first 200 lines) if present:" 
           if [ -f backend/sms-backend/composer.json ]; then head -n 200 backend/sms-backend/composer.json || true; else echo "composer.json not found in backend/sms-backend"; fi
 
-      - name: Install dependencies (project dir)
+      - name: Pre-install diagnostics (project dir)
         working-directory: backend/sms-backend
-        run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
+        run: |
+          echo "--- PRE-INSTALL DIAGNOSTICS ---"
+          echo "PWD: $(pwd)"
+          ls -la || true
+          composer --version || true
+          if [ -f composer.json ]; then echo "composer.json present"; head -n 200 composer.json || true; else echo "composer.json missing"; fi
+          composer diagnose || true
+
+      - name: Install dependencies (verbose, project dir)
+        working-directory: backend/sms-backend
+        run: composer install --no-interaction --prefer-dist --verbose
 
       - name: Ensure project .env exists (safe)
         run: |
