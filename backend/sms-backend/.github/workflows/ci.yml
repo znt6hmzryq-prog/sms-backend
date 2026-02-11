@@ -17,33 +17,69 @@ jobs:
 
     defaults:
       run:
-        working-directory: backend/sms-backend
+        shell: bash -l {0}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: false
+
+      - name: Deinit/remove broken submodules (safe)
+        run: |
+          git submodule deinit --all || true
+          [ -f .gitmodules ] && sed -n 's/^/FOUND .gitmodules: /;p' .gitmodules || true
+          rm -f .gitmodules || true
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v4
         with:
           php-version: ${{ matrix.php }}
           extensions: mbstring, bcmath, pdo, pdo_sqlite
+          ini-values: post_max_size=256M, memory_limit=2G
           tools: composer:2
 
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
-      - name: Setup env
+      - name: Install dependencies (project dir)
+        working-directory: backend/sms-backend
+        run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
+
+      - name: Ensure project .env exists (safe)
         run: |
-          if [ -f ".env.example" ]; then
-            cp .env.example .env
+          DIR=backend/sms-backend
+          if [ -f "$DIR/.env" ]; then
+            echo ".env already exists in $DIR"
+          elif [ -f "$DIR/.env.example" ]; then
+            cp "$DIR/.env.example" "$DIR/.env"
+          else
+            cat > "$DIR/.env" <<'EOF'
+APP_ENV=testing
+APP_KEY=
+APP_DEBUG=false
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+EOF
           fi
-          php -r "file_exists('database') || mkdir('database');"
-          touch database/database.sqlite
 
-      - name: Generate key + migrate
+      - name: Prepare environment and sqlite DB (project dir)
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
         run: |
-          php artisan key:generate --force
-          php artisan migrate --force
+          DIR=backend/sms-backend
+          php -r "file_exists('$DIR/database') || mkdir('$DIR/database', 0777, true);"
+          touch "$DIR/database/database.sqlite"
+          (cd "$DIR" && php artisan key:generate --ansi --force)
+          (cd "$DIR" && php artisan migrate --force)
 
-      - name: Run tests
+      - name: Run test suite (project dir)
+        working-directory: backend/sms-backend
         run: php artisan test
